@@ -4,13 +4,15 @@ import { notFoundError, requestError } from '@/errors';
 import { addressRepository, CreateAddressParams, enrollmentRepository, CreateEnrollmentParams } from '@/repositories';
 import { exclude } from '@/utils/prisma-utils';
 import { Adress } from '@/protocols';
-import httpStatus = require('http-status');
+import { BadRequest } from '@/errors/bad-request';
 
 // TODO - Receber o CEP por parâmetro nesta função.
 async function getAddressFromCEP(cep :string): Promise<Adress> {
   // FIXME: está com CEP fixo!
   const result = await request.get(`${process.env.VIA_CEP_API}/${cep}/json/`);
-  if (result.data.erro) requestError(httpStatus.BAD_REQUEST, 'BadRequest');
+  if (result.data.erro){
+    throw BadRequest()
+  }
 
   // TODO: Tratar regras de negócio e lanças eventuais erros
   // FIXME: não estamos interessados em todos os campos
@@ -55,6 +57,7 @@ async function createOrUpdateEnrollmentWithAddress(params: CreateOrUpdateEnrollm
   const address = getAddressForUpsert(params.address);
 
   // TODO - Verificar se o CEP é válido antes de associar ao enrollment.
+  await getAddressFromCEP(params.address.cep)
 
   const newEnrollment = await enrollmentRepository.upsert(params.userId, enrollment, exclude(enrollment, 'userId'));
 
